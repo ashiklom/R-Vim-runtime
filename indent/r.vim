@@ -11,7 +11,7 @@ if exists("b:did_indent")
 endif
 let b:did_indent = 1
 
-setlocal indentkeys=0{,0},:,!^F,o,O,e
+setlocal indentkeys=0{,0},:,!^F,o,O,e,0)
 setlocal indentexpr=GetRIndent()
 
 " Only define the function once.
@@ -408,6 +408,16 @@ function GetRIndent()
         return indent(lnum) - shiftwidth()
       endif
     endif
+  endif
+
+  " Unindent a closing parenthesis. For example:
+  " list(
+  "   a = 5,
+  "   b = 8
+  " ) <--- Line this up with the beginning of `list`
+  if cline =~ '^\s*)'
+    let indline = s:Get_matching_brace(clnum, '(', ')', 1)
+    return indent(indline)
   endif
 
   let bb = s:Get_paren_balance(line, '[', ']')
