@@ -368,9 +368,22 @@ function GetRIndent()
     "   a = 5,
     "   b = 8
     " ) <--- Line this up with the beginning of `list`
+    " ...but...
+    " list(a = 5, <-- Aligned arguments...
+    "      b = 8,
+    "      c = 9
+    "      ) <-- ...so this line's indent matches
     if cline =~ '^\s*)'
       let indlinenum = s:Get_matching_brace(clnum, '(', ')', 1)
-      return indent(indlinenum)
+      " Only unindent if the previous line matches this pattern.
+      " Otherwise, follow the previous line's indentation (a la 
+      " r_indent_align_args).
+      let indlinenum_value = indent(indlinenum)
+      let lnum_value = indent(lnum)
+      if lnum_value == indlinenum_value + shiftwidth()
+        return indlinenum_value
+      else
+        return lnum_value
     endif
   endif
 
