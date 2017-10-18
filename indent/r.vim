@@ -36,6 +36,11 @@ if ! exists("g:r_indent_op_pattern")
   let g:r_indent_op_pattern = '\(&\||\|+\|-\|\*\|/\|=\|\~\|%\|->\)\s*$'
 endif
 
+" Option to make the indentation similar to RStudio
+if ! exists("g:r_indent_rstudio")
+  let g:r_indent_rstudio = 0
+endif
+
 function s:RDelete_quotes(line)
   let i = 0
   let j = 0
@@ -122,6 +127,7 @@ function! s:Get_paren_balance(line, o, c)
   return openp - closep
 endfunction
 
+" Get the line number of the previous matching brace
 function! s:Get_matching_brace(linenr, o, c, delbrace)
   let line = SanitizeRLine(getline(a:linenr))
   if a:delbrace == 1
@@ -166,6 +172,7 @@ function! s:Get_matching_if(linenr, delif)
   endif
 endfunction
 
+" Get column number of last parenthesis
 function! s:Get_last_paren_idx(line, o, c, pb)
   let blc = a:pb
   let line = substitute(a:line, '\t', s:curtabstop, "g")
@@ -215,9 +222,9 @@ endfunction
 
 function GetRIndent()
 
-  let clnum = line(".")    " current line
+  let clnum = line(".")    " current line number
 
-  let cline = getline(clnum)
+  let cline = getline(clnum) " current line text
   if cline =~ '^\s*#'
     if g:r_indent_ess_comments == 1
       if cline =~ '^\s*###'
@@ -298,7 +305,18 @@ function GetRIndent()
 
   let s:curtabstop = repeat(' ', &tabstop)
 
-  if g:r_indent_align_args == 1
+  " Trailing open parenthesis indentation.
+  " list( <-- If this line ends with an open parenthesis...
+  "   a = 3, <-- ...indent this line
+  "   b = 7
+  " )
+  if g:r_indent_rstudio == 1
+    if pb > 0 && line =~ '($' && cline !~ '^\s*)'
+      return indent(lnum) + shiftwidth()
+    endif
+  endif
+
+  if g:r_indent_align_args == 1 && line !~ '($'
     if pb > 0 && line =~ '{$'
       return s:Get_last_paren_idx(line, '(', ')', pb) + shiftwidth()
     endif
@@ -341,6 +359,18 @@ function GetRIndent()
     if bb > 0
       let ind = s:Get_last_paren_idx(getline(lnum), '[', ']', bb)
       return ind
+    endif
+  endif
+ 
+  if g:r_indent_rstudio == 1
+    " Unindent a closing parenthesis on its own line. For example:
+    " list(
+    "   a = 5,
+    "   b = 8
+    " ) <--- Line this up with the beginning of `list`
+    if cline =~ '^\s*)'
+      let indlinenum = s:Get_matching_brace(clnum, '(', ')', 1)
+      return indent(indlinenum)
     endif
   endif
 
@@ -408,16 +438,6 @@ function GetRIndent()
         return indent(lnum) - shiftwidth()
       endif
     endif
-  endif
-
-  " Unindent a closing parenthesis. For example:
-  " list(
-  "   a = 5,
-  "   b = 8
-  " ) <--- Line this up with the beginning of `list`
-  if cline =~ '^\s*)'
-    let indline = s:Get_matching_brace(clnum, '(', ')', 1)
-    return indent(indline)
   endif
 
   let bb = s:Get_paren_balance(line, '[', ']')
