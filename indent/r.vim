@@ -333,27 +333,43 @@ function GetRIndent()
     endif
 
     if pb < 0 && line =~ '.*[,&|\-\*+<>]$'
-      let lnum = s:Get_prev_line(lnum)
-      while pb < 1 && lnum > 0
-        let line = SanitizeRLine(getline(lnum))
-        let line = substitute(line, '\t', s:curtabstop, "g")
-        let ind = strlen(line)
-        while ind > 0
-          if line[ind] == ')'
-            let pb -= 1
-          else
-            if line[ind] == '('
-              let pb += 1
+      if g:r_indent_rstudio
+        " This facilitates nested list indentation. For example...
+        " list(
+        "   one,
+        "   two = list(
+        "     three,
+        "     four
+        "   ),                        <-- Negative pb here
+        "   five = list(a, b),   <-- ...makes this matches the indent of 'two'
+        "   six = list(c, d)
+        " )
+        let llnum = s:Get_paren_balance(line, "(", ")")
+        return indent(llnum)
+      else
+        " Standard R_indent_align_args behavior
+        let lnum = s:Get_prev_line(lnum)
+        while pb < 1 && lnum > 0
+          let line = SanitizeRLine(getline(lnum))
+          let line = substitute(line, '\t', s:curtabstop, \"g")
+          let ind = strlen(line)
+          while ind > 0
+            if line[ind] == ')'
+              let pb -= 1
+            else
+              if line[ind] == '('
+                let pb += 1
+              endif
             endif
-          endif
-          if pb == 1
-            return ind + 1
-          endif
-          let ind -= 1
+            if pb == 1
+              return ind + 1
+            endif
+            let ind -= 1
+          endwhile
+          let lnum -= 1
         endwhile
-        let lnum -= 1
-      endwhile
-      return 0
+        return 0
+      endif
     endif
 
     if bb > 0
