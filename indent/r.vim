@@ -400,19 +400,26 @@ function GetRIndent()
   endif
 
   " Indent after operator pattern
-  let olnum = s:Get_prev_line(lnum)
+  " 'lnum/line' is the previous non-blank line
+  " 'olnum/oline' is the line before 'lnum/line'
+  let lpb = s:Get_paren_balance(line, "(", ")")
+  if lpb < 0
+    let lpnum = s:Get_matching_brace(lnum, "(", ")", 0)
+    let olnum = s:Get_prev_line(lpnum)
+  else
+    let olnum = s:Get_prev_line(lnum)
+  endif
   let oline = getline(olnum)
-  if olnum > 0
-    if line =~ g:r_indent_op_pattern && s:Get_paren_balance(line, "(", ")") == 0
-      if oline =~ g:r_indent_op_pattern && s:Get_paren_balance(line, "(", ")") == 0
-        return indent(lnum)
-      else
-        return indent(lnum) + shiftwidth()
-      endif
+
+  if line =~ g:r_indent_op_pattern
+    if oline =~ g:r_indent_op_pattern
+      return indent(lnum)
     else
-      if oline =~ g:r_indent_op_pattern && s:Get_paren_balance(line, "(", ")") == 0
-        return indent(lnum) - shiftwidth()
-      endif
+      return indent(lnum) + shiftwidth()
+    endif
+  else
+    if oline =~ g:r_indent_op_pattern && lpb == 0
+      return indent(lnum) - shiftwidth()
     endif
   endif
 
